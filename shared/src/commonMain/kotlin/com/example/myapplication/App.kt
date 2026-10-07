@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -30,90 +31,88 @@ import myapplication.shared.generated.resources.compose_multiplatform
 @Preview
 fun App() {
     MaterialTheme {
+        var customerName by remember { mutableStateOf("") }
+        var mainCourse by remember { mutableStateOf("漢堡套餐") }
+        val mainOptions = listOf("漢堡套餐", "炸雞套餐", "披薩套餐")
+
+        // Checkbox 需要獨立的 Boolean 變數來記錄是否被打勾
+        var addFries by remember { mutableStateOf(false) }
+        var addDrink by remember { mutableStateOf(false) }
+
+        var orderResult by remember { mutableStateOf("") }
+
+        // 這裡修改了 padding，將 top 設為 64.dp 把整個畫面往下推，避開頂部狀態列
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 64.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            var playerName by remember { mutableStateOf("") }
-            var selectedMora by remember { mutableStateOf("剪刀") }
-            val moraOptions = listOf("剪刀", "石頭", "布")
+            Text("Lab4: 點餐系統", fontSize = 24.sp, modifier = Modifier.padding(bottom = 16.dp))
 
-            // 1. 新增：儲存電腦出拳與勝利者的狀態
-            var computerMora by remember { mutableStateOf("未定") }
-            var winner by remember { mutableStateOf("未定") }
-
+            // 1. 顧客姓名輸入
             OutlinedTextField(
-                value = playerName,
-                onValueChange = { playerName = it },
-                label = { Text("請輸入玩家姓名") }
+                value = customerName,
+                onValueChange = { customerName = it },
+                label = { Text("請輸入顧客姓名或桌號") }
             )
 
-            Text(
-                text = "請輸入姓名以開始遊戲",
-                modifier = Modifier.padding(top = 16.dp),
-                fontSize = 18.sp
-            )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 16.dp)
-            ) {
-                moraOptions.forEach { option ->
+            // 2. 主餐選擇 (單選：RadioButton)
+            Text("選擇主餐：", modifier = Modifier.padding(top = 16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                mainOptions.forEach { option ->
                     RadioButton(
-                        selected = (selectedMora == option),
-                        onClick = { selectedMora = option }
+                        selected = (mainCourse == option),
+                        onClick = { mainCourse = option }
                     )
-                    Text(
-                        text = option,
-                        modifier = Modifier.padding(end = 16.dp)
-                    )
+                    Text(option, modifier = Modifier.padding(end = 8.dp))
                 }
             }
 
-            // 2. 修改：猜拳按鈕加入邏輯判斷
+            // 3. 附餐選擇 (複選：Checkbox)
+            Text("加購附餐：", modifier = Modifier.padding(top = 16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = addFries,
+                    onCheckedChange = { addFries = it } // 打勾狀態改變時觸發
+                )
+                Text("加購薯條 (+50元)", modifier = Modifier.padding(end = 16.dp))
+
+                Checkbox(
+                    checked = addDrink,
+                    onCheckedChange = { addDrink = it }
+                )
+                Text("加購飲料 (+30元)")
+            }
+
+            // 4. 送出訂單按鈕
             Button(
                 onClick = {
-                    // 如果沒有輸入名字，就先不執行
-                    if (playerName.isEmpty()) return@Button
-
-                    // 電腦隨機出拳
-                    computerMora = moraOptions.random()
-
-                    // 判斷勝負
-                    winner = when {
-                        selectedMora == computerMora -> "平手"
-                        (selectedMora == "剪刀" && computerMora == "布") ||
-                                (selectedMora == "石頭" && computerMora == "剪刀") ||
-                                (selectedMora == "布" && computerMora == "石頭") -> "玩家勝利"
-                        else -> "電腦勝利"
+                    if (customerName.isEmpty()) {
+                        orderResult = "請先輸入顧客姓名！"
+                        return@Button
                     }
+
+                    // 根據 Checkbox 狀態組合字串
+                    val friesText = if (addFries) "薯條 " else ""
+                    val drinkText = if (addDrink) "飲料 " else ""
+                    val extraMsg = if (addFries || addDrink) "\n加購項目：$friesText$drinkText" else "\n加購項目：無"
+
+                    // 將結果顯示在下方
+                    orderResult = "訂單明細\n顧客：$customerName\n主餐：$mainCourse$extraMsg"
                 },
                 modifier = Modifier.padding(top = 16.dp)
             ) {
-                Text("猜拳")
+                Text("送出訂單")
             }
 
-            // 3. 更新：將結果顯示區塊的文字綁定變數
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("名字")
-                    Text(playerName.ifEmpty { "無" })
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("勝利者")
-                    Text(winner) // 對應勝負變數
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("我方出拳")
-                    Text(selectedMora)
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("電腦出拳")
-                    Text(computerMora) // 對應電腦出拳變數
-                }
+            // 5. 顯示點餐結果
+            if (orderResult.isNotEmpty()) {
+                Text(
+                    text = orderResult,
+                    modifier = Modifier.padding(top = 32.dp),
+                    fontSize = 18.sp
+                )
             }
         }
     }
